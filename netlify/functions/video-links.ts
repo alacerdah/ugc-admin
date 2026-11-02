@@ -1,9 +1,25 @@
 import { db, isUuid } from "../lib/db";
 import { handle, HttpError, json, methodNotAllowed, readJson } from "../lib/http";
 import { requireSession } from "../lib/auth";
+import { assertProjectAccess } from "../lib/access";
 import { isPlatform } from "../../src/shared/platforms";
 
 const COLUMNS = "id, niche_id, platform, url, title, tag, position, created_at";
+
+async function projectIdOfNiche(id: string) {
+  const { rows } = await db().query<{ project_id: string }>("select project_id from niches where id = $1", [id]);
+  if (!rows[0]) throw new HttpError(404, "Nicho não encontrado.");
+  return rows[0].project_id;
+}
+
+async function projectIdOfLink(id: string) {
+  const { rows } = await db().query<{ project_id: string }>(
+    "select n.project_id from video_links v join niches n on n.id = v.niche_id where v.id = $1",
+    [id],
+  );
+  if (!rows[0]) throw new HttpError(404, "Link não encontrado.");
+  return rows[0].project_id;
+}
 
 function validateUrl(raw: string) {
   try {
@@ -16,12 +32,13 @@ function validateUrl(raw: string) {
 }
 
 export default handle(async (req) => {
-  requireSession(req);
+  const session = requireSession(req);
   const params = new URL(req.url).searchParams;
 
   if (req.method === "GET") {
     const nicheId = params.get("niche_id");
     if (!isUuid(nicheId)) throw new HttpError(400, "Nicho inválido.");
+    await assertProjectAccess(session, await projectIdOfNiche(nicheId));
     const { rows } = await db().query(
       `select ${COLUMNS} from video_links where niche_id = $1 order by position, created_at`,
       [nicheId],
@@ -32,6 +49,7 @@ export default handle(async (req) => {
   if (req.method === "POST") {
     const body = await readJson<{ niche_id?: string; platform?: string; url?: string; title?: string; tag?: string }>(req);
     if (!isUuid(body.niche_id)) throw new HttpError(400, "Nicho inválido.");
+    await assertProjectAccess(session, await projectIdOfNiche(body.niche_id));
     if (!isPlatform(body.platform)) throw new HttpError(400, "Plataforma inválida.");
     const url = validateUrl(String(body.url ?? ""));
     const title = String(body.title ?? "").trim();
@@ -52,6 +70,7 @@ export default handle(async (req) => {
   if (req.method === "PATCH") {
     const body = await readJson<{ id?: string; platform?: string; url?: string; title?: string; tag?: string }>(req);
     if (!isUuid(body.id)) throw new HttpError(400, "Link inválido.");
+    await assertProjectAccess(session, await projectIdOfLink(body.id));
     if (!isPlatform(body.platform)) throw new HttpError(400, "Plataforma inválida.");
     const url = validateUrl(String(body.url ?? ""));
     const title = String(body.title ?? "").trim();
@@ -73,6 +92,7 @@ export default handle(async (req) => {
     if (!isUuid(body.niche_id) || !Array.isArray(body.ids) || !body.ids.every(isUuid)) {
       throw new HttpError(400, "Ordem inválida.");
     }
+    await assertProjectAccess(session, await projectIdOfNiche(body.niche_id));
     await db().query(
       `update video_links v set position = o.ord - 1
        from unnest($2::uuid[]) with ordinality as o(id, ord)
@@ -85,6 +105,7 @@ export default handle(async (req) => {
   if (req.method === "DELETE") {
     const id = params.get("id");
     if (!isUuid(id)) throw new HttpError(400, "Link inválido.");
+    await assertProjectAccess(session, await projectIdOfLink(id));
     const { rowCount } = await db().query("delete from video_links where id = $1", [id]);
     if (!rowCount) throw new HttpError(404, "Link não encontrado.");
     return json({ ok: true });

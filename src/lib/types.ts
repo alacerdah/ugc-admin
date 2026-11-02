@@ -12,6 +12,7 @@ export type User = {
   name: string;
   role: Role;
   created_at: string;
+  project_ids: string[];
 };
 
 export type Project = {

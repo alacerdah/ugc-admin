@@ -1,16 +1,24 @@
 import { db, isUuid } from "../lib/db";
 import { handle, HttpError, json, methodNotAllowed, readJson } from "../lib/http";
 import { requireSession } from "../lib/auth";
+import { assertProjectAccess } from "../lib/access";
 
 const COLUMNS = "id, project_id, name, position, created_at";
 
+async function projectIdOfNiche(id: string) {
+  const { rows } = await db().query<{ project_id: string }>("select project_id from niches where id = $1", [id]);
+  if (!rows[0]) throw new HttpError(404, "Nicho não encontrado.");
+  return rows[0].project_id;
+}
+
 export default handle(async (req) => {
-  requireSession(req);
+  const session = requireSession(req);
   const params = new URL(req.url).searchParams;
 
   if (req.method === "GET") {
     const projectId = params.get("project_id");
     if (!isUuid(projectId)) throw new HttpError(400, "Projeto inválido.");
+    await assertProjectAccess(session, projectId);
     const { rows } = await db().query(`select ${COLUMNS} from niches where project_id = $1 order by position, created_at`, [
       projectId,
     ]);
@@ -20,6 +28,7 @@ export default handle(async (req) => {
   if (req.method === "POST") {
     const body = await readJson<{ project_id?: string; name?: string }>(req);
     if (!isUuid(body.project_id)) throw new HttpError(400, "Projeto inválido.");
+    await assertProjectAccess(session, body.project_id);
     const name = String(body.name ?? "").trim();
     if (name.length < 1 || name.length > 60) throw new HttpError(400, "Informe o nome do nicho (até 60 caracteres).");
 
@@ -36,6 +45,7 @@ export default handle(async (req) => {
   if (req.method === "PATCH") {
     const body = await readJson<{ id?: string; name?: string }>(req);
     if (!isUuid(body.id)) throw new HttpError(400, "Nicho inválido.");
+    await assertProjectAccess(session, await projectIdOfNiche(body.id));
     const name = String(body.name ?? "").trim();
     if (name.length < 1 || name.length > 60) throw new HttpError(400, "Informe o nome do nicho (até 60 caracteres).");
 
@@ -50,6 +60,7 @@ export default handle(async (req) => {
     if (!isUuid(body.project_id) || !Array.isArray(body.ids) || !body.ids.every(isUuid)) {
       throw new HttpError(400, "Ordem inválida.");
     }
+    await assertProjectAccess(session, body.project_id);
     await db().query(
       `update niches n set position = o.ord - 1
        from unnest($2::uuid[]) with ordinality as o(id, ord)
@@ -62,6 +73,7 @@ export default handle(async (req) => {
   if (req.method === "DELETE") {
     const id = params.get("id");
     if (!isUuid(id)) throw new HttpError(400, "Nicho inválido.");
+    await assertProjectAccess(session, await projectIdOfNiche(id));
     const { rowCount } = await db().query("delete from niches where id = $1", [id]);
     if (!rowCount) throw new HttpError(404, "Nicho não encontrado.");
     return json({ ok: true });

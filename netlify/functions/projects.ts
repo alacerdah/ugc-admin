@@ -1,18 +1,20 @@
 import { db, isUniqueViolation, isUuid } from "../lib/db";
 import { handle, HttpError, json, methodNotAllowed, readJson } from "../lib/http";
 import { requireAdmin, requireSession } from "../lib/auth";
+import { assertProjectAccess } from "../lib/access";
 import { validateSlug } from "../../src/shared/slug";
 
 const COLUMNS = "id, name, slug, domain, repo_name, contact_email, created_at";
 
 export default handle(async (req) => {
-  requireSession(req); // qualquer pessoa logada pode ver os projetos
+  const session = requireSession(req); // qualquer pessoa logada pode ver os projetos que acessa
   const params = new URL(req.url).searchParams;
 
   if (req.method === "GET") {
     const id = params.get("id");
     if (id) {
       if (!isUuid(id)) throw new HttpError(400, "Projeto inválido.");
+      await assertProjectAccess(session, id);
       const { rows } = await db().query(`select ${COLUMNS} from projects where id = $1`, [id]);
       if (!rows[0]) throw new HttpError(404, "Projeto não encontrado.");
       return json(rows[0]);
@@ -21,7 +23,10 @@ export default handle(async (req) => {
       `select p.${COLUMNS.replace(/, /g, ", p.")},
          (select count(*) from niches n where n.project_id = p.id) as niche_count,
          (select count(*) from video_links vl join niches n on n.id = vl.niche_id where n.project_id = p.id) as link_count
-       from projects p order by p.created_at`,
+       from projects p
+       ${session.role === "admin" ? "" : "where p.id in (select project_id from project_access where user_id = $1)"}
+       order by p.created_at`,
+      session.role === "admin" ? [] : [session.userId],
     );
     return json(rows);
   }

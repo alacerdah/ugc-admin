@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router";
+import { Trash2 } from "lucide-react";
 import { api, errorMessage } from "../lib/api";
 import type { Project } from "../lib/types";
 import { Alert, Button, GlassCard, TextField } from "./ui";
 
 export default function ProjectConfigForm({ project, onSaved, readOnly }: { project: Project; onSaved: (p: Project) => void; readOnly: boolean }) {
+  const navigate = useNavigate();
   const [name, setName] = useState(project.name);
   const [domain, setDomain] = useState(project.domain);
   const [repoName, setRepoName] = useState(project.repo_name);
@@ -11,6 +14,21 @@ export default function ProjectConfigForm({ project, onSaved, readOnly }: { proj
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const remove = async () => {
+    setDeleting(true);
+    setDeleteError("");
+    try {
+      await api(`/projects?id=${project.id}`, { method: "DELETE" });
+      navigate("/app", { replace: true });
+    } catch (err) {
+      setDeleteError(errorMessage(err));
+      setDeleting(false);
+    }
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -82,6 +100,36 @@ export default function ProjectConfigForm({ project, onSaved, readOnly }: { proj
           </div>
         )}
       </form>
+
+      {!readOnly && (
+        <div className="mt-8 flex flex-col gap-3 border-t border-ink/10 pt-6">
+          <div>
+            <h3 className="font-bold text-danger">Zona de risco</h3>
+            <p className="text-sm text-ink-soft">Exclui o projeto e todos os nichos e links dele. Não tem como desfazer.</p>
+          </div>
+          {deleteError && <Alert tone="error">{deleteError}</Alert>}
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <Button variant="danger" loading={deleting} onClick={remove}>
+                Confirmar exclusão de "{project.name}"?
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setConfirmDelete(false)}>
+                Cancelar
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="danger"
+              className="self-start"
+              icon={<Trash2 className="size-4" aria-hidden />}
+              onClick={() => setConfirmDelete(true)}
+            >
+              Excluir projeto
+            </Button>
+          )}
+        </div>
+      )}
     </GlassCard>
   );
 }
