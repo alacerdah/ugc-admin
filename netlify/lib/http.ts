@@ -35,3 +35,8 @@ export async function readJson<T>(req: Request): Promise<T> {
 }
 
 export const methodNotAllowed = () => new HttpError(405, "Método não permitido.");
+
+// tira a barra final de APP_URL antes de concatenar um path — com barra sobrando (ex:
+// "https://x.netlify.app/") o link ficava "https://x.netlify.app//resetar-senha", que o
+// client-side router não casa com nenhuma rota e cai no catch-all (manda pro /login).
+export const appUrl = (path: string) => `${(process.env.APP_URL || "http://localhost:8888").replace(/\/+$/, "")}${path}`;

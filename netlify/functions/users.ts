@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { db, isUniqueViolation, isUuid } from "../lib/db";
-import { handle, HttpError, json, methodNotAllowed, readJson } from "../lib/http";
+import { appUrl, handle, HttpError, json, methodNotAllowed, readJson } from "../lib/http";
 import { requireAdmin } from "../lib/auth";
 import { sendInviteEmail } from "../lib/mailer";
 
@@ -93,7 +93,7 @@ export default handle(async (req) => {
       "insert into password_reset_tokens (user_id, token_hash, expires_at) values ($1, $2, now() + interval '1 hour')",
       [userId, hashToken(token)],
     );
-    const setUrl = `${process.env.APP_URL || "http://localhost:8888"}/resetar-senha?token=${token}`;
+    const setUrl = appUrl(`/resetar-senha?token=${token}`);
     try {
       await sendInviteEmail(email, name, setUrl);
     } catch (e) {
