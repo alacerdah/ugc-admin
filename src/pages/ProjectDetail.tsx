@@ -37,6 +37,9 @@ export default function ProjectDetail() {
     );
   }
 
+  const isAdmin = user.role === "admin";
+  const tabs = isAdmin ? TABS : TABS.filter((t) => t.id === "content");
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -48,7 +51,7 @@ export default function ProjectDetail() {
       </div>
 
       <div className="glass inline-flex w-fit rounded-full p-1" role="tablist">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
