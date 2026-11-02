@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# SPA: qualquer rota que não seja arquivo nem function cai no React Router
+# (as functions usam config.path em /api/*, que tem prioridade sobre esta regra)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
