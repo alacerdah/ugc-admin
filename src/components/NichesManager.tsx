@@ -81,16 +81,15 @@ function NicheList({
             } ${dragId === niche.id ? "opacity-50" : ""}`}
           >
             <GripVertical className={`size-4 shrink-0 cursor-grab ${selectedId === niche.id ? "text-white/70" : "text-ink-faint"}`} aria-hidden />
-            <button type="button" onClick={() => onSelect(niche.id)} className="min-w-0 flex-1 truncate text-left text-sm font-semibold">
-              <input
-                key={niche.name}
-                defaultValue={niche.name}
-                onClick={(e) => e.stopPropagation()}
-                onBlur={(e) => onRename(niche, e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                className={`w-full truncate bg-transparent outline-none ${selectedId === niche.id ? "placeholder:text-white/70" : "placeholder:text-ink-faint"}`}
-              />
-            </button>
+            <input
+              key={niche.name}
+              defaultValue={niche.name}
+              onClick={() => onSelect(niche.id)}
+              onFocus={() => onSelect(niche.id)}
+              onBlur={(e) => onRename(niche, e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+              className={`min-w-0 flex-1 truncate bg-transparent text-left text-sm font-semibold outline-none ${selectedId === niche.id ? "placeholder:text-white/70" : "placeholder:text-ink-faint"}`}
+            />
             <div className="flex shrink-0 items-center gap-0.5">
               <button type="button" onClick={() => move(index, -1)} disabled={index === 0} className="rounded-full p-1.5 disabled:opacity-30" aria-label="Mover para cima">
                 <ChevronUp className="size-3.5" aria-hidden />
