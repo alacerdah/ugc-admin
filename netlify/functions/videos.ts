@@ -13,6 +13,9 @@ type Row = {
   position: number | null;
 };
 
+type GalleryRow = { id: string; platform: string; url: string; title: string; tag: string; position: number };
+type CarouselRow = { id: string; instagram_url: string; canva_url: string | null; title: string; position: number };
+
 // consumido cross-origin pelos templates (ariana.com.br, rihanna.com.br...): toda resposta,
 // inclusive erro, precisa do header de CORS — sem ele o template só vê "Failed to fetch",
 // nunca a mensagem de erro. Por isso não usa o `handle()` padrão (que não adiciona CORS no catch).
@@ -58,7 +61,22 @@ export default async function handler(req: Request) {
       }
     }
 
-    return withCors({ project: slug, niches: [...niches.values()] }, 200, { "Cache-Control": "public, max-age=60" });
+    const [gallery, carousels] = await Promise.all([
+      db().query<GalleryRow>(
+        "select id, platform, url, title, tag, position from gallery_photos where project_id = $1 order by position",
+        [project.rows[0].id],
+      ),
+      db().query<CarouselRow>(
+        "select id, instagram_url, canva_url, title, position from carousel_posts where project_id = $1 order by position",
+        [project.rows[0].id],
+      ),
+    ]);
+
+    return withCors(
+      { project: slug, niches: [...niches.values()], gallery: gallery.rows, carousels: carousels.rows },
+      200,
+      { "Cache-Control": "public, max-age=60" },
+    );
   } catch (e) {
     if (e instanceof HttpError) return withCors({ error: e.message }, e.status);
     console.error(e);

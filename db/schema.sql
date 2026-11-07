@@ -50,3 +50,37 @@ create table if not exists video_links (
   created_at timestamptz not null default now()
 );
 create index if not exists video_links_listing_idx on video_links (niche_id, position);
+
+create table if not exists project_access (
+  user_id uuid not null references users(id) on delete cascade,
+  project_id uuid not null references projects(id) on delete cascade,
+  primary key (user_id, project_id)
+);
+create index if not exists project_access_project_idx on project_access (project_id);
+
+-- fotos da galeria: um link embedado por item, igual video_links, mas sem nicho (lista única do projeto).
+-- 'canva' é a arte embedada direto (iframe), sem precisar de link do Instagram junto (diferente do carrossel).
+create table if not exists gallery_photos (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  platform text not null default 'instagram' check (platform in ('instagram', 'tiktok', 'canva')),
+  url text not null,
+  title text not null default '',
+  tag text not null default '',
+  position integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists gallery_photos_listing_idx on gallery_photos (project_id, position);
+
+-- post de carrossel do Instagram: só o link do Instagram (embed nativo com swipe), ou
+-- Instagram + um embed do Canva pra controlar a capa mostrada (com link "ver no Instagram" ao lado)
+create table if not exists carousel_posts (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  instagram_url text not null,
+  canva_url text,
+  title text not null default '',
+  position integer not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists carousel_posts_listing_idx on carousel_posts (project_id, position);

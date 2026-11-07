@@ -7,9 +7,13 @@ import type { Project } from "../lib/types";
 import { Alert, PageHeader } from "../components/ui";
 import ProjectConfigForm from "../components/ProjectConfigForm";
 import NichesManager from "../components/NichesManager";
+import GalleryManager from "../components/GalleryManager";
+import CarouselManager from "../components/CarouselManager";
 
 const TABS = [
   { id: "content", label: "Nichos e links" },
+  { id: "gallery", label: "Fotos" },
+  { id: "carousel", label: "Carrossel" },
   { id: "config", label: "Configurações" },
 ] as const;
 
@@ -38,7 +42,7 @@ export default function ProjectDetail() {
   }
 
   const isAdmin = user.role === "admin";
-  const tabs = isAdmin ? TABS : TABS.filter((t) => t.id === "content");
+  const tabs = isAdmin ? TABS : TABS.filter((t) => t.id !== "config");
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,11 +71,10 @@ export default function ProjectDetail() {
         ))}
       </div>
 
-      {tab === "content" ? (
-        <NichesManager projectId={project.id} />
-      ) : (
-        <ProjectConfigForm project={project} onSaved={setProject} readOnly={user.role !== "admin"} />
-      )}
+      {tab === "content" && <NichesManager projectId={project.id} />}
+      {tab === "gallery" && <GalleryManager projectId={project.id} />}
+      {tab === "carousel" && <CarouselManager projectId={project.id} />}
+      {tab === "config" && <ProjectConfigForm project={project} onSaved={setProject} readOnly={user.role !== "admin"} />}
     </div>
   );
 }

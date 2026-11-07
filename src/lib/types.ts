@@ -45,3 +45,24 @@ export type VideoLink = {
   position: number;
   created_at: string;
 };
+
+export type GalleryPhoto = {
+  id: string;
+  project_id: string;
+  platform: "instagram" | "tiktok" | "canva";
+  url: string;
+  title: string;
+  tag: string;
+  position: number;
+  created_at: string;
+};
+
+export type CarouselPost = {
+  id: string;
+  project_id: string;
+  instagram_url: string;
+  canva_url: string | null;
+  title: string;
+  position: number;
+  created_at: string;
+};
